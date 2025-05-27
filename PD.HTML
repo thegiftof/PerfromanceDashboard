@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clearview Performance Dashboard - May Update</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Roboto', sans-serif; background-color: #f8f9fa; }
+        .progress-bar-track { background-color: #e0e0e0; border-radius: 9999px; height: 0.5rem; overflow: hidden; }
+        .progress-bar-fill { height: 0.5rem; border-radius: 9999px; }
+        .accretion-good { color: #34a853; } .accretion-warning { color: #fbbc05; } .accretion-bad { color: #ea4335; }
+        .pending-status { color: #757575; } .termed-status { color: #7f1d1d; }
+        .negative-indicator { color: #ea4335; }
+        .goal-met { color: #34a853; } .goal-met-bg { background-color: #e6f4ea; } .goal-met-border { border-color: #a5d6a7; } .goal-met-progress { background-color: #34a853; }
+        .goal-warning { color: #fbbc05; } .goal-warning-bg { background-color: #fff8e1; } .goal-warning-border { border-color: #ffecb3; } .goal-warning-progress { background-color: #fbbc05; }
+        .goal-missed { color: #ea4335; } .goal-missed-bg { background-color: #fce8e6; } .goal-missed-border { border-color: #f9bdbb; } .goal-missed-progress { background-color: #ea4335; }
+        .legend-square { display: inline-block; width: 1rem; height: 1rem; margin-right: 0.5rem; vertical-align: middle; border-radius: 0.125rem; }
+        .card-subtitle { font-size: 0.75rem; font-weight: normal; color: #5f6368; }
+        .text-xxs { font-size: 0.65rem; line-height: 0.85rem; }
+        .team-card-header { background-color: #1a73e8; color: white; }
+        .team-icon { filter: brightness(0) invert(1); }
+        .dashboard-card { background-color: white; border-radius: 8px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); overflow: hidden; }
+        .dashboard-card-header { background-color: #f1f3f4; border-bottom: 1px solid #dadce0; }
+        .dashboard-title { color: #202124; } .dashboard-subtitle { color: #5f6368; }
+        .editable-metric { cursor: pointer; transition: background-color 0.2s; }
+        .editable-metric:hover { background-color: #f0f0f0; }
+        .editing { padding: 0; border: 1px solid #1a73e8; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold dashboard-title">Clearview Performance Dashboard</h1>
+            <p class="dashboard-subtitle font-bold">May Performance Update (MTD May 1-23)</p>
+        </header>
+
+        <div class="mb-6 p-4 dashboard-card">
+            <h4 class="text-md font-semibold text-gray-700 mb-2">Legend</h4>
+            <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
+                <div><span class="legend-square goal-met-progress"></span> Goal Met / Good (>= 85% Accreted)</div>
+                <div><span class="legend-square goal-warning-progress"></span> Approaching Goal / Warning (80-84.99% Accreted)</div>
+                <div><span class="legend-square goal-missed-progress"></span> Below Goal / Needs Attention (< 80% Accreted or other KPIs)</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+
+            <div class="dashboard-card p-4">
+                <h2 class="text-lg font-semibold text-gray-800 mb-2 text-center">MAPD Policies Sold</h2>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="flex-1 bg-gray-50 rounded-md p-3 border border-gray-200">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-1">MTD <span class="card-subtitle">(May 1-23)</span></h3>
+                        <p class="text-2xl font-bold text-gray-900 editable-metric" data-metric-id="mapd-mtd-actual" data-goal="1848" data-card-type="slim-progress">971</p>
+                        <p class="text-xxs text-gray-500 mt-0.5">Goal: <span data-metric-id="mapd-mtd-goal">1848</span> (Monthly)</p>
+                        <div class="mt-1.5">
+                            <div class="progress-bar-track w-full">
+                                <div class="progress-bar-fill goal-missed-progress" data-metric-id="mapd-mtd-progress" style="width: 52.54%;"></div>
+                            </div>
+                            <p class="text-xxs goal-missed font-medium mt-0.5 text-right" data-metric-id="mapd-mtd-shortfall">877 Below Goal</p>
+                        </div>
+                    </div>
+                    <div class="flex-1 bg-gray-50 rounded-md p-3 border border-gray-200">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-1">Prev. Wk <span class="card-subtitle">(May 19-23)</span></h3>
+                        <p class="text-2xl font-bold text-gray-900 editable-metric" data-metric-id="mapd-prevwk-actual" data-goal="462" data-card-type="slim-progress-estimated">299</p>
+                        <p class="text-xxs text-gray-500 mt-0.5">Target (Est.): <span data-metric-id="mapd-prevwk-goal">~462</span></p>
+                        <div class="mt-1.5">
+                            <div class="progress-bar-track w-full">
+                                <div class="progress-bar-fill goal-missed-progress" data-metric-id="mapd-prevwk-progress" style="width: 64.72%;"></div>
+                            </div>
+                             <p class="text-xxs goal-missed font-medium mt-0.5 text-right" data-metric-id="mapd-prevwk-shortfall">163 Below Target</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-card p-4">
+                <h2 class="text-lg font-semibold text-gray-800 mb-2 text-center">Sales Per Day (SPD)</h2>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="flex-1 bg-gray-50 rounded-md p-3 border border-gray-200">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-1">MTD <span class="card-subtitle">(May 1-23)</span></h3>
+                        <p class="text-2xl font-bold text-gray-900 editable-metric" data-metric-id="spd-mtd-actual" data-goal="2.5" data-card-type="slim-progress">1.31</p>
+                        <p class="text-xxs text-gray-500 mt-0.5">Goal: <span data-metric-id="spd-mtd-goal">2.5</span></p>
+                        <div class="mt-1.5">
+                            <div class="progress-bar-track w-full">
+                                <div class="progress-bar-fill goal-missed-progress" data-metric-id="spd-mtd-progress" style="width: 52.4%;"></div>
+                            </div>
+                            <p class="text-xxs goal-missed font-medium mt-0.5 text-right" data-metric-id="spd-mtd-shortfall">1.19 Below Goal</p>
+                        </div>
+                    </div>
+                    <div class="flex-1 bg-gray-50 rounded-md p-3 border border-gray-200">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-1">Prev. Wk <span class="card-subtitle">(May 19-23)</span></h3>
+                        <p class="text-2xl font-bold text-gray-900 editable-metric" data-metric-id="spd-prevwk-actual" data-goal="2.5" data-card-type="slim-progress">1.16</p>
+                        <p class="text-xxs text-gray-500 mt-0.5">Goal: <span data-metric-id="spd-prevwk-goal">2.5</span></p>
+                        <div class="mt-1.5">
+                            <div class="progress-bar-track w-full">
+                                <div class="progress-bar-fill goal-missed-progress" data-metric-id="spd-prevwk-progress" style="width: 46.4%;"></div>
+                            </div>
+                            <p class="text-xxs goal-missed font-medium mt-0.5 text-right" data-metric-id="spd-prevwk-shortfall">1.34 Below Goal</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="dashboard-card p-4">
+                <h2 class="text-lg font-semibold text-gray-800 mb-2 text-center">Conversion Rate</h2>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="flex-1 bg-gray-50 rounded-md p-3 border border-gray-200">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-1">MTD <span class="card-subtitle">(May 1-23)</span></h3>
+                        <p class="text-2xl font-bold text-gray-900 editable-metric" data-metric-id="cvr-mtd-actual" data-goal="15" data-card-type="slim-progress-percent">11.18<span class="text-xl">%</span></p>
+                        <p class="text-xxs text-gray-500 mt-0.5">Goal: <span data-metric-id="cvr-mtd-goal">15</span>%</p>
+                        <div class="mt-1.5">
+                            <div class="progress-bar-track w-full">
+                                <div class="progress-bar-fill goal-missed-progress" data-metric-id="cvr-mtd-progress" style="width: 74.53%;"></div>
+                            </div>
+                            <p class="text-xxs goal-missed font-medium mt-0.5 text-right" data-metric-id="cvr-mtd-shortfall">3.82% Short</p>
+                        </div>
+                    </div>
+                    <div class="flex-1 bg-gray-50 rounded-md p-3 border border-gray-200">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-1">Prev. Wk <span class="card-subtitle">(May 19-23)</span></h3>
+                        <p class="text-2xl font-bold text-gray-900 editable-metric" data-metric-id="cvr-prevwk-actual" data-goal="15" data-card-type="slim-progress-percent">9.20<span class="text-xl">%</span></p>
+                        <p class="text-xxs text-gray-500 mt-0.5">Goal: <span data-metric-id="cvr-prevwk-goal">15</span>%</p>
+                        <div class="mt-1.5">
+                            <div class="progress-bar-track w-full">
+                                 <div class="progress-bar-fill goal-missed-progress" data-metric-id="cvr-prevwk-progress" style="width: 61.33%;"></div>
+                            </div>
+                            <p class="text-xxs goal-missed font-medium mt-0.5 text-right" data-metric-id="cvr-prevwk-shortfall">5.80% Short</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                 <div class="goal-missed-bg border-b goal-missed-border p-4 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold goal-missed">Hospital Indemnity <span class="card-subtitle">(MTD May 1-23)</span></h2>
+                    <img src="https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/hospital.svg" alt="Hospital" class="w-6 h-6 goal-missed"/>
+                </div>
+                <div class="p-6">
+                     <p class="text-4xl font-bold text-gray-900 editable-metric" data-metric-id="hi-actual" data-goal="350" data-card-type="standard-progress">87</p>
+                     <p class="text-sm text-gray-500 mt-1">Goal: <span data-metric-id="hi-goal">350</span> Policies (Monthly)</p>
+                     <div class="mt-4">
+                        <div class="progress-bar-track w-full">
+                             <div class="progress-bar-fill goal-missed-progress" data-metric-id="hi-progress" style="width: 24.86%;"></div>
+                        </div>
+                         <p class="text-xs goal-missed font-medium mt-1 text-right" data-metric-id="hi-shortfall">263 Policies Below Monthly Goal</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                 <div class="goal-missed-bg border-b goal-missed-border p-4 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold negative-indicator">CTMS Received <span class="card-subtitle">(May MTD)</span></h2>
+                    <img src="https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/shield-alert.svg" alt="CTMS Alert" class="w-6 h-6 negative-indicator"/>
+                </div>
+                <div class="p-6">
+                    <p class="text-4xl font-bold text-gray-900 editable-metric" data-metric-id="ctms-actual" data-card-type="simple-value">2</p>
+                    <p class="text-sm text-gray-500 mt-2">Total received MTD.</p>
+                    <p class="text-sm font-semibold negative-indicator mt-3">Needs Attention (Low is Good)</p>
+                </div>
+            </div>
+
+             <div class="dashboard-card">
+                 <div class="bg-gray-50 border-b border-gray-200 p-4 flex items-center justify-between" id="compliance-header">
+                    <h2 class="text-lg font-semibold text-gray-700" id="compliance-title">Compliance Score <span class="card-subtitle">(May MTD)</span></h2>
+                    <img src="https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/check-shield.svg" alt="Compliance Score" id="compliance-icon" class="w-6 h-6 text-gray-500"/>
+                </div>
+                <div class="p-6">
+                     <p class="text-4xl font-bold text-gray-900 editable-metric" data-metric-id="compliance-actual" data-goal="95" data-card-type="standard-progress-percent-na">N/A</p>
+                    <p class="text-sm text-gray-500 mt-1">Goal: <span data-metric-id="compliance-goal">95</span>%</p>
+                     <div class="mt-4" data-metric-id="compliance-details">
+                        <p class="text-xs text-gray-500 font-medium mt-1" data-metric-id="compliance-shortfall">Scores not yet released for May.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div> 
+
+        <div class="mt-8">
+            <h3 class="text-xl font-semibold dashboard-title mb-4">Team Weekly Performance <span class="text-sm font-normal dashboard-subtitle">(May 19-23)</span></h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                 <div class="dashboard-card">
+                    <div class="team-card-header p-4 flex items-center justify-between">
+                        <h2 class="text-lg font-semibold">Team Alexus</h2>
+                        <img src="https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/users.svg" alt="Team" class="w-6 h-6 team-icon"/>
+                    </div>
+                    <div class="p-4 space-y-1">
+                        <p class="text-sm text-gray-700">Total MAPD: <span class="font-bold">188</span></p>
+                        <p class="text-sm text-gray-700">Total HI: <span class="font-bold">26</span></p>
+                        <p class="text-sm text-gray-700">Avg. Conversion: <span class="font-bold ${11.72 < 15 ? 'goal-missed' : 'goal-met'}">11.72%</span></p>
+                        <p class="text-sm text-gray-700">Avg. SPD: <span class="font-bold ${1.70 < 2.5 ? 'goal-missed' : 'goal-met'}">1.70</span></p>
+                    </div>
+                </div>
+
+                <div class="dashboard-card">
+                    <div class="team-card-header p-4 flex items-center justify-between">
+                        <h2 class="text-lg font-semibold">Team Keenan</h2>
+                         <img src="https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/users.svg" alt="Team" class="w-6 h-6 team-icon"/>
+                    </div>
+                     <div class="p-4 space-y-1">
+                        <p class="text-sm text-gray-700">Total MAPD: <span class="font-bold">102</span></p>
+                        <p class="text-sm text-gray-700">Total HI: <span class="font-bold">0</span></p>
+                        <p class="text-sm text-gray-700">Avg. SPD: <span class="font-bold ${1.18 < 2.5 ? 'goal-missed' : 'goal-met'}">1.18</span></p>
+                    </div>
+                </div>
+
+                <div class="dashboard-card">
+                    <div class="team-card-header p-4 flex items-center justify-between">
+                        <h2 class="text-lg font-semibold">Team Jarod & Emily</h2>
+                         <img src="https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/users.svg" alt="Team" class="w-6 h-6 team-icon"/>
+                    </div>
+                     <div class="p-4 space-y-1">
+                        <p class="text-sm text-gray-700">Total MAPD: <span class="font-bold">25</span></p>
+                        <p class="text-sm text-gray-700">Total HI: <span class="font-bold">0</span></p>
+                        <p class="text-sm text-gray-700">Avg. Conversion: <span class="font-bold ${4.20 < 15 ? 'goal-missed' : 'goal-met'}">4.20%</span></p>
+                        <p class="text-sm text-gray-700">Avg. SPD: <span class="font-bold ${0.48 < 2.5 ? 'goal-missed' : 'goal-met'}">0.48</span></p>
+                    </div>
+                </div>
+                
+                <div class="dashboard-card">
+                    <div class="team-card-header p-4 flex items-center justify-between">
+                        <h2 class="text-lg font-semibold">Team Amanda & Nicole</h2>
+                         <img src="https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/users.svg" alt="Team" class="w-6 h-6 team-icon"/>
+                    </div>
+                     <div class="p-4 space-y-1">
+                        <p class="text-sm text-gray-700">Total MAPD: <span class="font-bold">48</span></p>
+                        <p class="text-sm text-gray-700">Total HI: <span class="font-bold">0</span></p>
+                        <p class="text-sm text-gray-700">Avg. Conversion: <span class="font-bold ${7.40 < 15 ? 'goal-missed' : 'goal-met'}">7.40%</span></p>
+                        <p class="text-sm text-gray-700">Avg. SPD: <span class="font-bold ${0.79 < 2.5 ? 'goal-missed' : 'goal-met'}">0.79</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="mt-8">
+            <h3 class="text-xl font-semibold dashboard-title mb-2">Accretion Rate <span class="text-sm font-normal dashboard-subtitle">(May MTD)</span></h3>
+
+            <div class="mb-6 dashboard-card">
+                <div class="goal-missed-bg border-b goal-missed-border p-4 flex items-center justify-between">
+                    <h4 class="text-lg font-semibold goal-missed">Overall MAPD Accretion Rate</h4>
+                    <img src="https://cdn.jsdelivr.net/npm/lucide-static@latest/icons/pie-chart.svg" alt="Overall Accretion" class="w-6 h-6 goal-missed"/>
+                </div>
+                <div class="p-6">
+                    <p class="text-4xl font-bold text-gray-900">67.31<span class="text-2xl">%</span></p>
+                    <p class="text-sm text-gray-500 mt-1">Goal: 85%</p>
+                     <div class="mt-4">
+                        <div class="progress-bar-track w-full">
+                             <div class="progress-bar-fill goal-missed-progress" style="width: 79.19%;"></div>
+                        </div>
+                        <p class="text-xs goal-missed font-medium mt-1 text-right">17.69% Short of Goal</p>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-3">Overall MAPD Pending Rate: <span class="font-medium">14.90%</span></p>
+                    <p class="text-sm text-gray-600">Overall MAPD Termed Rate: <span class="font-medium">17.79%</span></p>
+                    <p class="text-xs text-gray-500 mt-1 italic">*Note: Based on provided "TOTAL" for MAPD carriers.</p>
+                </div>
+            </div>
+
+            <h4 class="text-lg font-semibold text-gray-700 mb-3">Accretion Rate by Carrier <span class="text-sm font-normal dashboard-subtitle">(May MTD)</span></h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+
+                <div class="dashboard-card p-4">
+                    <h4 class="font-semibold text-gray-700 mb-2">AETNA</h4>
+                    <p class="text-sm font-medium accretion-bad">Accreted: 70.59%</p>
+                    <p class="text-sm text-gray-600">Pending: 5.88%</p>
+                    <p class="text-sm text-gray-600">Termed: 23.53%</p>
+                </div>
+
+                <div class="dashboard-card p-4">
+                    <h4 class="font-semibold text-gray-700 mb-2">AMERIHEALTH</h4>
+                    <p class="text-sm font-medium accretion-bad">Accreted: 67.52%</p>
+                    <p class="text-sm text-gray-600">Pending: 28.50%</p>
+                    <p class="text-sm text-gray-600">Termed: 5.98%</p>
+                </div>
+
+                <div class="dashboard-card p-4">
+                    <h4 class="font-semibold text-gray-700 mb-2">ANTHEM</h4>
+                    <p class="text-sm font-medium accretion-good">Accreted: 100%</p>
+                    <p class="text-sm text-gray-600">Pending: 0%</p>
+                    <p class="text-sm text-gray-600">Termed: 0%</p>
+                </div>
+
+                <div class="dashboard-card p-4">
+                    <h4 class="font-semibold text-gray-700 mb-2">HUMANA</h4>
+                    <p class="text-sm font-medium accretion-bad">Accreted: 72.31%</p>
+                    <p class="text-sm text-gray-600">Pending: 8.46%</p>
+                    <p class="text-sm text-gray-600">Termed: 19.23%</p>
+                </div>
+
+                <div class="dashboard-card p-4">
+                    <h4 class="font-semibold text-gray-700 mb-2">UHC</h4>
+                    <p class="text-sm font-medium accretion-bad">Accreted: 61.08%</p>
+                    <p class="text-sm text-gray-600">Pending: 15.27%</p>
+                    <p class="text-sm text-gray-600">Termed: 23.65%</p>
+                </div>
+
+                <div class="dashboard-card p-4">
+                    <h4 class="font-semibold text-gray-700 mb-2">UPMC</h4>
+                    <p class="text-sm font-medium accretion-bad">Accreted: 76.60%</p>
+                    <p class="text-sm text-gray-600">Pending: 12.77%</p>
+                    <p class="text-sm text-gray-600">Termed: 10.64%</p>
+                </div>
+
+                 <div class="dashboard-card p-4">
+                    <h4 class="font-semibold text-gray-700 mb-2">WELLCARE</h4>
+                    <p class="text-sm font-medium accretion-bad">Accreted: 59.09%</p>
+                    <p class="text-sm text-gray-600">Pending: 32.82%</p>
+                    <p class="text-sm text-gray-600">Termed: 9.09%</p>
+                </div>
+
+                 <div class="dashboard-card p-4">
+                    <h4 class="font-semibold text-gray-700 mb-2">ZING</h4>
+                    <p class="text-sm font-medium accretion-bad">Accreted: 0%</p>
+                    <p class="text-sm text-gray-600">Pending: 100%</p>
+                    <p class="text-sm text-gray-600">Termed: 0%</p>
+                </div>
+
+                <div class="dashboard-card p-4">
+                    <h4 class="font-semibold text-gray-700 mb-2">UH ONE (Ancillary)</h4>
+                    <p class="text-sm font-medium accretion-warning">Accreted: 81.97%</p>
+                    <p class="text-sm text-gray-600">Pending: 0%</p>
+                    <p class="text-sm text-gray-600">Termed: 18.03%</p>
+                </div>
+
+
+            </div> 
+        </div> 
+
+        <div class="mt-8 dashboard-card p-6">
+            <h3 class="text-xl font-semibold dashboard-title mb-3">Key Observations & Actions (May Update)</h3>
+            <ul class="list-disc list-inside text-gray-700 space-y-2">
+                <li>Sales KPIs for May MTD (May 1-23):
+                    <ul class="list-disc list-inside ml-4">
+                        <li>MAPD: 971 (tracking low against monthly goal)</li>
+                        <li>SPD MTD (Weighted Avg): 1.31 (below 2.5 goal)</li>
+                        <li>Conversion Rate MTD (Weighted Avg): 11.18% (below 15% goal)</li>
+                    </ul>
+                </li>
+                 <li>Sales KPIs for Previous Week (May 19-23):
+                    <ul class="list-disc list-inside ml-4">
+                        <li>MAPD: 363</li>
+                        <li>SPD: 1.16 (below 2.5 goal)</li>
+                        <li>Conversion Rate: 9.20% (below 15% goal)</li>
+                    </ul>
+                </li>
+                 <li>Team Performance for Previous Week (May 19-23) - SPD Goal is 2.5:
+                    <ul class="list-disc list-inside ml-4">
+                        <li>Team Alexus: MAPD 188, HI 26, Conv. 11.72%, SPD 1.70</li>
+                        <li>Team Keenan: MAPD 102, HI 0, SPD 1.18</li>
+                        <li>Team Jarod & Emily: MAPD 25, HI 0, Conv. 4.20%, SPD 0.48</li>
+                        <li>Team Amanda & Nicole: MAPD 48, HI 0, Conv. 7.40%, SPD 0.79</li>
+                    </ul>
+                </li>
+                <li>May MTD Hospital Indemnity policies (87) are tracking low against typical monthly goals.</li>
+                <li>May MTD CTMS Received count is 2. (Target: <1 per 1000 MAPD, currently ~0.97 per 1000 is good. 2 is above this).</li>
+                <li>May MTD Compliance Score: N/A (scores not yet released).</li>
+                <li>May MTD Overall MAPD Accretion Rate is 67.31%, below the 85% goal. Carrier rates vary significantly.</li>
+                <li>New hires were in nesting last week; this week they are out and need to be on par with target sales averages and other metrics.</li>
+                <li>Continued focus needed on agent tool usage (e.g., SEP finder) and Hospital Indemnity sales strategies, including downselling.</li>
+                <li>**Action Plan:**
+                    <ul class="list-disc list-inside ml-4">
+                        <li>Continue daily reminders & workshopping on SEP tool usage.</li>
+                        <li>Maintain increased focus on Hospital Indemnity sales and downselling techniques.</li>
+                        <li>Investigate and address factors impacting low Accretion Rates for specific carriers and the MTD Compliance Score (once available).</li>
+                        <li>Provide additional training on call flow and call handle time.</li>
+                        <li>Further coach and train on new sales process rolled out to agents for better call handling, higher conversion, and sales applications.</li>
+                    </ul>
+                </li>
+            </ul>
+        </div> 
+
+    </div> 
+
+    <script>
+    function makeEditable(element) {
+        const originalValue = element.textContent.replace('%', '').trim();
+        const metricId = element.dataset.metricId;
+        const goal = parseFloat(element.dataset.goal);
+        const cardType = element.dataset.cardType;
+        const isPercent = originalValue.includes('%') || cardType.includes('percent');
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = originalValue;
+        input.className = 'w-full text-center editing text-2xl font-bold p-0 m-0'; // Adjusted style
+
+        element.replaceWith(input);
+        input.focus();
+
+        function updateMetric() {
+            let newValueText = input.value.trim();
+            let newValue = parseFloat(newValueText);
+
+            if (isNaN(newValue)) {
+                newValue = 0; // Default to 0 if input is not a number
+                newValueText = isPercent ? "0%" : "0";
+            } else {
+                 newValueText = isPercent ? newValue.toFixed(2) + "%" : newValue.toFixed(cardType.includes('spd') ? 2 : 0);
+            }
+            
+            const newElement = document.createElement('p');
+            newElement.className = element.className; // Keep original classes
+            newElement.dataset.metricId = metricId;
+            newElement.dataset.goal = goal;
+            newElement.dataset.cardType = cardType;
+            if (isPercent && cardType.includes('slim-progress-percent')) { // for slim conversion card
+                 newElement.innerHTML = newValue.toFixed(2) + '<span class="text-xl">%</span>';
+            } else if (isPercent) {
+                 newElement.innerHTML = newValue.toFixed(2) + '<span class="text-2xl">%</span>';
+            }
+             else {
+                newElement.textContent = newValueText;
+            }
+            
+            newElement.addEventListener('click', () => makeEditable(newElement));
+            input.replaceWith(newElement);
+
+            // Update related elements
+            const progressBar = document.querySelector(`[data-metric-id="${metricId.replace('-actual', '-progress')}"]`);
+            const shortfallText = document.querySelector(`[data-metric-id="${metricId.replace('-actual', '-shortfall')}"]`);
+            const goalElement = document.querySelector(`[data-metric-id="${metricId.replace('-actual', '-goal')}"]`);
+            const currentGoal = parseFloat(goalElement ? goalElement.textContent.replace(/[^0-9.]/g, "") : goal);
+
+
+            if (cardType.includes('progress')) {
+                if (progressBar && shortfallText && !isNaN(currentGoal) && currentGoal > 0) {
+                    const progressPercent = Math.min((newValue / currentGoal) * 100, 100).toFixed(2);
+                    progressBar.style.width = progressPercent + '%';
+                    
+                    const diff = currentGoal - newValue;
+                    if (isPercent) {
+                        shortfallText.textContent = diff.toFixed(2) + "% " + (diff > 0 ? "Short of Goal" : "Above Goal");
+                    } else if (cardType.includes('slim-progress-estimated')) {
+                        shortfallText.textContent = Math.abs(diff.toFixed(0)) + (diff > 0 ? " Below Target" : " Above Target");
+                    }
+                     else {
+                        shortfallText.textContent = Math.abs(diff.toFixed(cardType.includes('spd') ? 2 : 0)) + (diff > 0 ? " Below Goal" : " Above Goal");
+                    }
+
+                    // Update header styles based on goal
+                    let headerStatus = diff > 0 ? 'goal-missed' : 'goal-met';
+                    if (progressPercent >= 80 && progressPercent < 100 && diff > 0) {
+                        headerStatus = 'goal-warning';
+                    }
+                    
+                    const header = newElement.closest('.dashboard-card, .bg-white.rounded-lg.shadow-md.overflow-hidden').querySelector('[class*="-bg"]');
+                    const headerTitle = header ? header.querySelector('h2') : null;
+                    const headerIcon = header ? header.querySelector('img') : null;
+
+                    if(header && headerTitle && headerIcon) {
+                        header.className = `${headerStatus}-bg border-b ${headerStatus}-border p-4 flex items-center justify-between`;
+                        headerTitle.className = `text-lg font-semibold ${headerStatus}`;
+                        headerIcon.className = `w-6 h-6 ${headerStatus}`;
+                    }
+                    progressBar.className = `progress-bar-fill ${headerStatus}-progress`;
+                    shortfallText.className = `text-xs ${headerStatus} font-medium mt-1 text-right`;
+                     if(cardType.includes('slim-progress')) shortfallText.className = `text-xxs ${headerStatus} font-medium mt-0.5 text-right`;
+
+                }
+            } else if (cardType === 'standard-progress-percent-na' && newValueText !== 'N/A') {
+                 const detailsDiv = document.querySelector(`[data-metric-id="${metricId.replace('-actual', '-details')}"]`);
+                 if (detailsDiv && !isNaN(currentGoal) && currentGoal > 0) {
+                    detailsDiv.innerHTML = `
+                        <div class="progress-bar-track w-full">
+                            <div class="progress-bar-fill goal-warning-progress" data-metric-id="compliance-progress" style="width: ${(newValue / currentGoal * 100).toFixed(2)}%;"></div>
+                        </div>
+                        <p class="text-xs goal-warning font-medium mt-1 text-right" data-metric-id="compliance-shortfall">${(currentGoal - newValue).toFixed(0)}% Short of Goal</p>
+                    `;
+                    // Update compliance header to warning
+                    const complianceHeader = document.getElementById('compliance-header');
+                    const complianceTitle = document.getElementById('compliance-title');
+                    const complianceIcon = document.getElementById('compliance-icon');
+                    if(complianceHeader && complianceTitle && complianceIcon){
+                        complianceHeader.className = 'goal-warning-bg border-b goal-warning-border p-4 flex items-center justify-between';
+                        complianceTitle.className = 'text-lg font-semibold goal-warning';
+                        complianceIcon.className = 'w-6 h-6 goal-warning';
+                    }
+                }
+            }
+        }
+
+        input.addEventListener('blur', updateMetric);
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                updateMetric();
+            } else if (event.key === 'Escape') {
+                input.replaceWith(element); // Revert to original if Esc is pressed
+            }
+        });
+    }
+
+    document.querySelectorAll('.editable-metric').forEach(element => {
+        element.addEventListener('click', () => makeEditable(element));
+    });
+
+    </script>
+
+</body>
+</html>
