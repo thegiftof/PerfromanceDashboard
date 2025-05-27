@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Roboto', sans-serif; background-color: #f8f9fa; }
         .progress-bar-track { background-color: #e0e0e0; border-radius: 9999px; height: 0.5rem; overflow: hidden; }
@@ -29,15 +29,52 @@
         .editable-metric { cursor: pointer; transition: background-color 0.2s; }
         .editable-metric:hover { background-color: #f0f0f0; }
         .editing { padding: 0; border: 1px solid #1a73e8; border-radius: 4px; }
+        /* Save button style */
+        #saveMetricsButton {
+            background-color: #1a73e8; /* Google Blue */
+            color: white;
+            transition: background-color 0.3s;
+        }
+        #saveMetricsButton:hover {
+            background-color: #1765cc; /* Darker Google Blue */
+        }
+        #saveMetricsButton:disabled {
+            background-color: #bdc1c6; /* Google Gray for disabled */
+            cursor: not-allowed;
+        }
+        /* Message box style */
+        #messageBox {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        #messageBox.success { background-color: #34a853; color: white; }
+        #messageBox.error { background-color: #ea4335; color: white; }
+        #messageBox.active { opacity: 1; visibility: visible; }
     </style>
 </head>
 <body class="bg-gray-100 p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto">
-        <header class="mb-8">
+        <header class="mb-4">
             <h1 class="text-3xl font-bold dashboard-title">Clearview Performance Dashboard</h1>
             <p class="dashboard-subtitle font-bold">May Performance Update (MTD May 1-23)</p>
         </header>
+
+        <div class="flex justify-between items-center mb-4">
+            <div> </div>
+            <button id="saveMetricsButton" class="font-semibold py-2 px-6 rounded-lg shadow-md">
+                Save Metrics
+            </button>
+        </div>
 
         <div class="mb-6 p-4 dashboard-card">
             <h4 class="text-md font-semibold text-gray-700 mb-2">Legend</h4>
@@ -329,6 +366,8 @@
             </div> 
         </div> 
 
+        <div id="messageBox"></div> 
+        
         <div class="mt-8 dashboard-card p-6">
             <h3 class="text-xl font-semibold dashboard-title mb-3">Key Observations & Actions (May Update)</h3>
             <ul class="list-disc list-inside text-gray-700 space-y-2">
@@ -373,103 +412,161 @@
         </div> 
 
     </div> 
+    <script type="module">
+        // Firebase SDK Imports (ensure these paths are correct for your setup)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot,enableNetwork, disableNetwork, terminate, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAnalytics, setAnalyticsCollectionEnabled, isSupported as isAnalyticsSupported } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
 
-    <script>
-    function makeEditable(element) {
-        const originalValue = element.textContent.replace('%', '').trim();
-        const metricId = element.dataset.metricId;
-        const goal = parseFloat(element.dataset.goal);
-        const cardType = element.dataset.cardType;
-        const isPercent = originalValue.includes('%') || cardType.includes('percent');
 
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.value = originalValue;
-        input.className = 'w-full text-center editing text-2xl font-bold p-0 m-0'; // Adjusted style
+        // --- Firebase Configuration (REPLACE WITH YOUR ACTUAL CONFIG) ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "YOUR_API_KEY", // Replace
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com", // Replace
+            projectId: "YOUR_PROJECT_ID", // Replace
+            storageBucket: "YOUR_PROJECT_ID.appspot.com", // Replace
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // Replace
+            appId: "YOUR_APP_ID", // Replace
+            measurementId: "YOUR_MEASUREMENT_ID" // Optional
+        };
 
-        element.replaceWith(input);
-        input.focus();
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'clearview-dashboard-default'; // Use provided app_id or a default
+        
+        let db;
+        let auth;
+        let userId;
+        let dashboardDataRef;
+        let isSaving = false; // Flag to prevent multiple saves
 
-        function updateMetric() {
-            let newValueText = input.value.trim();
-            let newValue = parseFloat(newValueText);
+        // --- Initial Dashboard Data Structure ---
+        // This will be populated from Firestore or with default values
+        let dashboardData = {
+            'mapd-mtd-actual': 971,
+            'mapd-prevwk-actual': 363,
+            'spd-mtd-actual': 1.31,
+            'spd-prevwk-actual': 1.16,
+            'cvr-mtd-actual': 11.18,
+            'cvr-prevwk-actual': 9.20,
+            'hi-actual': 87,
+            'ctms-actual': 2,
+            'compliance-actual': 'N/A', 
+        };
 
-            if (isNaN(newValue)) {
-                newValue = 0; // Default to 0 if input is not a number
-                newValueText = isPercent ? "0%" : "0";
-            } else {
-                 newValueText = isPercent ? newValue.toFixed(2) + "%" : newValue.toFixed(cardType.includes('spd') ? 2 : 0);
+        // --- Firebase Initialization and Auth ---
+        async function initFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                    console.log("Signed in with custom token.");
+                } else {
+                    await signInAnonymously(auth);
+                    console.log("Signed in anonymously.");
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("User ID:", userId);
+                        dashboardDataRef = doc(db, "artifacts", appId, "users", userId, "metricsData", "dashboardMetricsMay"); // Corrected Path
+                        loadMetrics(); 
+                    } else {
+                        console.log("User is signed out.");
+                        userId = null;
+                        dashboardDataRef = null; 
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase initialization error:", error);
+                showMessage("Error initializing Firebase. Data will not be saved.", "error");
             }
-            
-            const newElement = document.createElement('p');
-            newElement.className = element.className; // Keep original classes
-            newElement.dataset.metricId = metricId;
-            newElement.dataset.goal = goal;
-            newElement.dataset.cardType = cardType;
-            if (isPercent && cardType.includes('slim-progress-percent')) { // for slim conversion card
-                 newElement.innerHTML = newValue.toFixed(2) + '<span class="text-xl">%</span>';
+        }
+
+
+        // --- UI Update Functions ---
+        function updateMetricDisplay(metricId, newValue, goal, cardType) {
+            const element = document.querySelector(`[data-metric-id="${metricId}"]`);
+            if (!element) return;
+
+            let newValueText = newValue;
+            const isPercent = cardType && cardType.includes('percent');
+
+            if (typeof newValue === 'number') {
+                 newValueText = isPercent ? newValue.toFixed(2) + "%" : newValue.toFixed(cardType && cardType.includes('spd') ? 2 : 0);
+            }
+
+
+            if (isPercent && cardType === 'slim-progress-percent') {
+                 element.innerHTML = parseFloat(newValue).toFixed(2) + '<span class="text-xl">%</span>';
             } else if (isPercent) {
-                 newElement.innerHTML = newValue.toFixed(2) + '<span class="text-2xl">%</span>';
+                 element.innerHTML = parseFloat(newValue).toFixed(2) + '<span class="text-2xl">%</span>';
+            } else {
+                element.textContent = newValueText;
             }
-             else {
-                newElement.textContent = newValueText;
-            }
-            
-            newElement.addEventListener('click', () => makeEditable(newElement));
-            input.replaceWith(newElement);
 
-            // Update related elements
+
             const progressBar = document.querySelector(`[data-metric-id="${metricId.replace('-actual', '-progress')}"]`);
             const shortfallText = document.querySelector(`[data-metric-id="${metricId.replace('-actual', '-shortfall')}"]`);
             const goalElement = document.querySelector(`[data-metric-id="${metricId.replace('-actual', '-goal')}"]`);
             const currentGoal = parseFloat(goalElement ? goalElement.textContent.replace(/[^0-9.]/g, "") : goal);
 
 
-            if (cardType.includes('progress')) {
-                if (progressBar && shortfallText && !isNaN(currentGoal) && currentGoal > 0) {
-                    const progressPercent = Math.min((newValue / currentGoal) * 100, 100).toFixed(2);
+            if (cardType && cardType.includes('progress')) {
+                 if (progressBar && shortfallText && !isNaN(currentGoal) && currentGoal > 0) {
+                    const numericValue = parseFloat(newValue);
+                    const progressPercent = Math.min((numericValue / currentGoal) * 100, 100).toFixed(2);
                     progressBar.style.width = progressPercent + '%';
                     
-                    const diff = currentGoal - newValue;
+                    const diff = currentGoal - numericValue;
                     if (isPercent) {
-                        shortfallText.textContent = diff.toFixed(2) + "% " + (diff > 0 ? "Short of Goal" : "Above Goal");
+                        shortfallText.textContent = diff.toFixed(2) + "% " + (diff > 0 ? "Short" : "Above Goal");
                     } else if (cardType.includes('slim-progress-estimated')) {
                         shortfallText.textContent = Math.abs(diff.toFixed(0)) + (diff > 0 ? " Below Target" : " Above Target");
-                    }
-                     else {
+                    } else {
                         shortfallText.textContent = Math.abs(diff.toFixed(cardType.includes('spd') ? 2 : 0)) + (diff > 0 ? " Below Goal" : " Above Goal");
                     }
 
-                    // Update header styles based on goal
                     let headerStatus = diff > 0 ? 'goal-missed' : 'goal-met';
                     if (progressPercent >= 80 && progressPercent < 100 && diff > 0) {
                         headerStatus = 'goal-warning';
                     }
                     
-                    const header = newElement.closest('.dashboard-card, .bg-white.rounded-lg.shadow-md.overflow-hidden').querySelector('[class*="-bg"]');
+                    const cardElement = element.closest('.dashboard-card, .bg-gray-50'); 
+                    const header = cardElement ? cardElement.closest('.dashboard-card, .bg-white.rounded-lg.shadow-md.overflow-hidden').querySelector('[class*="-bg"].border-b') : null;
                     const headerTitle = header ? header.querySelector('h2') : null;
                     const headerIcon = header ? header.querySelector('img') : null;
 
-                    if(header && headerTitle && headerIcon) {
+
+                    if(header && headerTitle && headerIcon && !cardType.includes('slim-progress')) { 
                         header.className = `${headerStatus}-bg border-b ${headerStatus}-border p-4 flex items-center justify-between`;
                         headerTitle.className = `text-lg font-semibold ${headerStatus}`;
                         headerIcon.className = `w-6 h-6 ${headerStatus}`;
                     }
                     progressBar.className = `progress-bar-fill ${headerStatus}-progress`;
-                    shortfallText.className = `text-xs ${headerStatus} font-medium mt-1 text-right`;
-                     if(cardType.includes('slim-progress')) shortfallText.className = `text-xxs ${headerStatus} font-medium mt-0.5 text-right`;
+                    
+                    let shortfallClass = `text-xs ${headerStatus} font-medium mt-1 text-right`;
+                    if(cardType.includes('slim-progress')) {
+                        shortfallClass = `text-xxs ${headerStatus} font-medium mt-0.5 text-right`;
+                    }
+                    shortfallText.className = shortfallClass;
+
 
                 }
             } else if (cardType === 'standard-progress-percent-na' && newValueText !== 'N/A') {
                  const detailsDiv = document.querySelector(`[data-metric-id="${metricId.replace('-actual', '-details')}"]`);
+                 const numericValue = parseFloat(newValue);
                  if (detailsDiv && !isNaN(currentGoal) && currentGoal > 0) {
                     detailsDiv.innerHTML = `
                         <div class="progress-bar-track w-full">
-                            <div class="progress-bar-fill goal-warning-progress" data-metric-id="compliance-progress" style="width: ${(newValue / currentGoal * 100).toFixed(2)}%;"></div>
+                            <div class="progress-bar-fill goal-warning-progress" data-metric-id="compliance-progress" style="width: ${(numericValue / currentGoal * 100).toFixed(2)}%;"></div>
                         </div>
-                        <p class="text-xs goal-warning font-medium mt-1 text-right" data-metric-id="compliance-shortfall">${(currentGoal - newValue).toFixed(0)}% Short of Goal</p>
+                        <p class="text-xs goal-warning font-medium mt-1 text-right" data-metric-id="compliance-shortfall">${(currentGoal - numericValue).toFixed(0)}% Short of Goal</p>
                     `;
-                    // Update compliance header to warning
                     const complianceHeader = document.getElementById('compliance-header');
                     const complianceTitle = document.getElementById('compliance-title');
                     const complianceIcon = document.getElementById('compliance-icon');
@@ -479,22 +576,167 @@
                         complianceIcon.className = 'w-6 h-6 goal-warning';
                     }
                 }
+            } else if (cardType === 'standard-progress-percent-na' && newValueText === 'N/A') {
+                const detailsDiv = document.querySelector(`[data-metric-id="${metricId.replace('-actual', '-details')}"]`);
+                if (detailsDiv) {
+                    detailsDiv.innerHTML = `<p class="text-xs text-gray-500 font-medium mt-1" data-metric-id="compliance-shortfall">Scores not yet released for May.</p>`;
+                }
+                 const complianceHeader = document.getElementById('compliance-header');
+                 const complianceTitle = document.getElementById('compliance-title');
+                 const complianceIcon = document.getElementById('compliance-icon');
+                 if(complianceHeader && complianceTitle && complianceIcon){
+                    complianceHeader.className = 'bg-gray-50 border-b border-gray-200 p-4 flex items-center justify-between';
+                    complianceTitle.className = 'text-lg font-semibold text-gray-700';
+                    complianceIcon.className = 'w-6 h-6 text-gray-500';
+                }
+            }
+        }
+        
+        function populateAllDisplaysFromData() {
+            document.querySelectorAll('.editable-metric').forEach(element => {
+                const metricId = element.dataset.metricId;
+                const goal = parseFloat(element.dataset.goal);
+                const cardType = element.dataset.cardType;
+                if (dashboardData.hasOwnProperty(metricId)) {
+                    updateMetricDisplay(metricId, dashboardData[metricId], goal, cardType);
+                }
+            });
+        }
+
+        // --- Editable Metrics Logic ---
+        function makeEditable(element) {
+            const originalValueText = element.textContent.replace('%', '').trim();
+            const metricId = element.dataset.metricId;
+            const goal = parseFloat(element.dataset.goal);
+            const cardType = element.dataset.cardType;
+            const isPercent = originalValueText.includes('%') || (cardType && cardType.includes('percent'));
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = originalValueText === 'N/A' ? '' : originalValueText;
+            input.className = 'w-full text-center editing text-2xl font-bold p-0 m-0';
+            if (cardType && cardType.includes('slim')) input.className = 'w-full text-center editing text-2xl font-bold p-0 m-0';
+
+
+            element.replaceWith(input);
+            input.focus();
+            input.select();
+
+            function saveUpdate() {
+                let newValueText = input.value.trim();
+                let newValueForStorage;
+
+                if (newValueText === '' && cardType === 'standard-progress-percent-na') {
+                    newValueForStorage = 'N/A';
+                } else {
+                    let numericValue = parseFloat(newValueText);
+                    if (isNaN(numericValue)) {
+                        numericValue = 0; 
+                    }
+                    newValueForStorage = numericValue;
+                }
+                
+                dashboardData[metricId] = newValueForStorage; 
+                updateMetricDisplay(metricId, newValueForStorage, goal, cardType); 
+                
+            }
+
+            input.addEventListener('blur', saveUpdate);
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    saveUpdate();
+                } else if (event.key === 'Escape') {
+                    updateMetricDisplay(metricId, dashboardData[metricId], goal, cardType); 
+                    const originalElement = document.createElement('p');
+                    originalElement.className = element.className;
+                    originalElement.dataset.metricId = metricId;
+                    originalElement.dataset.goal = goal;
+                    originalElement.dataset.cardType = cardType;
+                    if (isPercent && cardType.includes('slim-progress-percent')) {
+                         originalElement.innerHTML = parseFloat(dashboardData[metricId]).toFixed(2) + '<span class="text-xl">%</span>';
+                    } else if (isPercent) {
+                         originalElement.innerHTML = parseFloat(dashboardData[metricId]).toFixed(2) + '<span class="text-2xl">%</span>';
+                    } else {
+                        originalElement.textContent = dashboardData[metricId];
+                    }
+                    originalElement.addEventListener('click', () => makeEditable(originalElement));
+                    input.replaceWith(originalElement);
+                }
+            });
+        }
+
+        // --- Firestore Data Operations ---
+        async function saveMetrics() {
+            if (!dashboardDataRef || isSaving) {
+                if(isSaving) console.log("Save already in progress.");
+                else console.error("Firestore not initialized or user not authenticated.");
+                showMessage("Cannot save: Not connected to database or save in progress.", "error");
+                return;
+            }
+            isSaving = true;
+            document.getElementById('saveMetricsButton').disabled = true;
+            document.getElementById('saveMetricsButton').textContent = 'Saving...';
+
+            console.log("Attempting to save to Firestore:", dashboardData);
+            try {
+                await setDoc(dashboardDataRef, dashboardData);
+                console.log("Metrics saved to Firestore successfully!");
+                showMessage("Metrics saved successfully!", "success");
+            } catch (error) {
+                console.error("Error saving metrics to Firestore:", error);
+                showMessage("Error saving metrics: " + error.message, "error");
+            } finally {
+                isSaving = false;
+                document.getElementById('saveMetricsButton').disabled = false;
+                document.getElementById('saveMetricsButton').textContent = 'Save Metrics';
             }
         }
 
-        input.addEventListener('blur', updateMetric);
-        input.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                updateMetric();
-            } else if (event.key === 'Escape') {
-                input.replaceWith(element); // Revert to original if Esc is pressed
+        async function loadMetrics() {
+            if (!dashboardDataRef) {
+                console.error("Firestore not initialized or user not authenticated for loading.");
+                populateAllDisplaysFromData(); 
+                return;
+            }
+            try {
+                const docSnap = await getDoc(dashboardDataRef);
+                if (docSnap.exists()) {
+                    const loadedData = docSnap.data();
+                    dashboardData = { ...dashboardData, ...loadedData }; 
+                    console.log("Metrics loaded from Firestore:", dashboardData);
+                } else {
+                    console.log("No saved metrics found in Firestore, using defaults and attempting to save them.");
+                    await saveMetrics(); 
+                }
+            } catch (error) {
+                console.error("Error loading metrics from Firestore:", error);
+                showMessage("Error loading metrics. Using default values.", "error");
+            }
+            populateAllDisplaysFromData(); 
+        }
+        
+        function showMessage(message, type = "success") {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.className = 'active ' + type; 
+            setTimeout(() => {
+                messageBox.classList.remove('active');
+            }, 3000); 
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initFirebase(); 
+
+            document.querySelectorAll('.editable-metric').forEach(element => {
+                element.addEventListener('click', () => makeEditable(element));
+            });
+
+            const saveButton = document.getElementById('saveMetricsButton');
+            if (saveButton) {
+                saveButton.addEventListener('click', saveMetrics);
             }
         });
-    }
-
-    document.querySelectorAll('.editable-metric').forEach(element => {
-        element.addEventListener('click', () => makeEditable(element));
-    });
 
     </script>
 
